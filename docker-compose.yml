@@ -1,0 +1,85 @@
+version: '3.9'
+services:
+    frontend:
+        build:
+            context: ./fe-dhil/dhil
+            dockerfile: DockerFile
+        ports:
+            - 3000:3000
+        volumes:
+            - ./fe-dhil/dhil:/app
+            - /app/node_modules
+        environment:
+            - NODE_ENV=development
+            - REACT_APP_API_URL=http://localhost:5000
+        depends_on:
+            - api-gateway
+        networks:
+            - portfolio-network
+
+    api-gateway:
+        build:
+            context: ./api-dhil/rest-api-dhil
+            dockerfile: DockerFile 
+        ports:
+            - "5000:5000" 
+        volumes:
+            - ./api-dhil/rest-api-dhil:/app
+            - /app/node_modules
+        environment:
+            - NODE_ENV=development
+            - GO_SERVICE_URL=http://backend-go:8080
+        depends_on:
+            - backend-go
+        networks:
+            - portfolio-network
+
+    backend-go:
+        build:
+            context: ./be-dhil/go-fiber-dhil
+            dockerfile: DockerFile 
+        ports:
+            - "8081:8080"
+        volumes:
+            - ./be-dhil/go-fiber-dhil:/app
+        environment:
+            - DB_HOST=db
+            - DB_PORT=5432
+            - DB_USER=${DB_USER} 
+            - DB_PASSWORD=${DB_PASSWORD} 
+            - DB_NAME=${DB_NAME} 
+            - REDIS_HOST=redis
+            - REDIS_PORT=6379
+        depends_on:
+            - db
+            - redis
+        networks:
+            - portfolio-network
+
+    db:
+        image: postgres:14-alpine
+        environment:
+            POSTGRES_USER: ${DB_USER}
+            POSTGRES_DB: ${DB_NAME}
+            POSTGRES_HOST_AUTH_METHOD: trust
+        volumes:
+            - postgres-data:/var/lib/postgresql/data
+        ports:
+            - "5433:5432"
+        networks:
+            - portfolio-network
+        restart: unless-stopped
+
+    redis:
+        image: redis:7-alpine
+        ports:
+            - "6380:6379"
+        networks:
+            - portfolio-network
+        restart: unless-stopped
+
+networks:
+    portfolio-network:
+        driver: bridge
+volumes:
+    postgres-data:
